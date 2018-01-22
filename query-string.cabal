@@ -1,0 +1,23 @@
+name:                query-string
+version:             0.1.0.0
+synopsis:            A querystring parser with nesting support
+homepage:            https://github.com/naushadh/query-string#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Naushadh
+maintainer:          naushadh@protonmail.com
+copyright:           2018 Naushadh
+category:            Web
+build-type:          Simple
+cabal-version:       >=1.10
+extra-source-files:  README.md
+
+library
+  hs-source-dirs:
+    src
+  default-language:
+    Haskell2010
+  exposed-modules:
+    Data.URI.QueryString
+  build-depends:
+    base >= 4.7 && < 5
