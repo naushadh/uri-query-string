@@ -33,9 +33,6 @@ import           Data.Monoid ((<>))
 -- | The entire QueryString parsed into a map like structure.
 type QueryString = [Param]
 
-lookupFull :: ParamKey -> QueryString -> Maybe Param
-lookupFull k ps = List.find (\p -> fst p == k) ps
-
 -- | A single parameter in a 'QueryString'
 type Param = (ParamKey, ParamVal)
 
@@ -69,7 +66,7 @@ runParser p s = case null results of
 -- | Parse a rfc3986 compliant query string into a map-like 'QueryString'.
 -- TODO: verify various malformed input scenarios.
 parseQueryString :: Parser QueryString
-parseQueryString = condense . reverse . i2e <$> parseIQueryString
+parseQueryString = condense . fmap i2e <$> parseIQueryString
 
 oneOf :: (a -> Parser a) -> [a] -> Parser a
 oneOf p xs = P.choice (p <$> xs)
@@ -192,21 +189,21 @@ parseIQueryString = parseIParam `P.sepBy1` (P.char '&')
 -------------------------------------------------------------------------------
 -- * INTERNAL -> EXTERNAL
 
-i2e :: IQueryString -> QueryString
-i2e = foldr put []
+i2e :: IParam -> Param
+i2e (IKey ik nks, IVal iv) = mkParam nks (PVLeaf iv)
   where
-    -- put i-param into o
-    put :: IParam -> QueryString -> QueryString
-    put (IKey ik nks, IVal iv) ps = mkParam nks (PVLeaf iv) : ps
-      where
-        mkParam [] v = (ParamKey ik, v)
-        mkParam ks v = case last ks of
-          "" -> mkParam (init ks) (PVList [v])
-          k  -> mkParam (init ks) (PVNode $ [(ParamKey k, v)])
+    mkParam :: [String] -> ParamVal -> Param
+    mkParam [] v = (ParamKey ik, v)
+    mkParam ks v = case last ks of
+      "" -> mkParam (init ks) (PVList [v])
+      k  -> mkParam (init ks) (PVNode $ [(ParamKey k, v)])
 
 condense :: QueryString -> QueryString
-condense = foldr go []
+condense = List.foldl' (flip go) []
   where
+    lookupFull :: ParamKey -> QueryString -> Maybe Param
+    lookupFull k ps = (,) <$> pure k <*> lookup k ps
+    go :: Param -> QueryString -> QueryString
     go p@(k,PVList vs) ps = case lookupFull k ps of
       Just p0@(_, PVList vs0) -> go (k, PVList $ vs0 <> vs) (List.delete p0 ps)
       Just _ -> p:ps
